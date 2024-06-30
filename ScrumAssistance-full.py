@@ -186,20 +186,19 @@ def schedule_jobs(application: Application) -> None:
     # Schedule daily tasks
     job_queue.run_daily(send_daily_report, time=time(hour=9, minute=0))
     job_queue.run_daily(ask_for_daily_tasks, time=time(hour=16, minute=0))
-    job_queue.run_daily(remind_users_to_send_tasks, time=time(hour=20, minute=0))
-
-async def daily_message(context: CallbackContext):
-    # Replace 'GROUP_CHAT_ID' with the actual chat ID of the group
-    await context.bot.send_message(chat_id= group_id, message_thread_id=topic_id, text='Daily Message!')
-    
+    job_queue.run_daily(remind_users_to_send_tasks, time=time(hour=18, minute=0))
+        
+        
 def main() -> None:
     """Start the bot."""
     # Create the Application and pass it your bot's token.
     application = Application.builder().token("7230447684:AAETM_yIJmnCCJQMjI7bZvZ3WNKosQQPnt4").build()
+
+    group_filter = filters.ChatType.GROUPS
     
     # Add conversation handler with the states TASKS_TODAY, BLOCKERS, TASKS_TOMORROW
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('report', start_report)],
+        entry_points=[CommandHandler('report',start_report , filters=group_filter)],
         states={
             TASKS_TODAY: [MessageHandler(filters.TEXT & ~filters.COMMAND, tasks_today)],
             BLOCKERS: [MessageHandler(filters.TEXT & ~filters.COMMAND, blockers)],
@@ -207,8 +206,8 @@ def main() -> None:
         },
         fallbacks=[CommandHandler('cancel', cancel)],
     )
-
-    application.add_handler(CommandHandler("getreports", send_daily_reports))
+    
+    application.add_handler(CommandHandler("getreports", send_daily_reports, filters=group_filter))
 
     application.add_handler(conv_handler)
     
