@@ -15,17 +15,26 @@ from telegram.ext import (
     ConversationHandler,
 )
 from datetime import time, datetime, timedelta
+import os
 
 # Enable logging
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
 )
+
 logger = logging.getLogger(__name__)
-group_id = -4220216586  # Replace with your group chat ID
-topic_id = 140  # Replace with your group chat ID
+group_id = os.getenv('GTOUP_ID', -4220216586)  # Replace with your group chat ID
+topic_id = os.getenv('TOPIC_ID', 140)  # Replace with your group chat ID
+token = os.getenv('TOKEN', '7230447684:AAETM_yIJmnCCJQMjI7bZvZ3WNKosQQPnt4')
+
+# Ensure the /data directory exists
+os.makedirs('data', exist_ok=True)
 
 # SQLite Database Setup
-engine = create_engine('sqlite:///daily_reports.db')
+directory_name = 'data'
+database_name = 'database.db'
+db_path = os.path.join(directory_name, database_name)
+engine = create_engine(f'sqlite:///{db_path}')
 Base = declarative_base()
 
 class Report(Base):
@@ -94,8 +103,6 @@ async def cancel(update: Update, context: CallbackContext) -> int:
     return ConversationHandler.END
 
 async def send_daily_report(context: CallbackContext) -> None:
-    logger.info("asdfasdf")
-    
     """Send daily report to the group."""
     logger.info("send_daily_report works")
     session = Session()
@@ -188,11 +195,10 @@ def schedule_jobs(application: Application) -> None:
     job_queue.run_daily(ask_for_daily_tasks, time=time(hour=16, minute=0))
     job_queue.run_daily(remind_users_to_send_tasks, time=time(hour=18, minute=0))
         
-        
 def main() -> None:
     """Start the bot."""
     # Create the Application and pass it your bot's token.
-    application = Application.builder().token("7230447684:AAETM_yIJmnCCJQMjI7bZvZ3WNKosQQPnt4").build()
+    application = Application.builder().token(token).build()
 
     group_filter = filters.ChatType.GROUPS
     

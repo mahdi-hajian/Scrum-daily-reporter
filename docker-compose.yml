@@ -1,0 +1,30 @@
+version: "3.1"
+
+services:
+  dailyreporter:
+    container_name: dailyreporter
+    build: /
+    logging:
+      options:
+        max-size: "500m"
+        max-file: "5"
+    volumes:
+      - daily-reporter-data:/data
+    environment:
+      - TOKEN=7230447684:AAETM_yIJmnCCJQMjI7bZvZ3WNKosQQPnt4
+      - GTOUP_ID=-4220216586
+      - TOPIC_ID=140
+    networks:
+      - telegram-network
+
+networks:
+  telegram-network:
+    driver: bridge
+
+volumes:
+  daily-reporter-data:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: "./dailyreporter"
