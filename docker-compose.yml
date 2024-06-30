@@ -12,7 +12,7 @@ services:
       - daily-reporter-data:/data
     environment:
       - TOKEN=7230447684:AAETM_yIJmnCCJQMjI7bZvZ3WNKosQQPnt4
-      - GTOUP_ID=-4220216586
+      - GTOUP_ID=-2163805514
       - TOPIC_ID=140
     networks:
       - telegram-network

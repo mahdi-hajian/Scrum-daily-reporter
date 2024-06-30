@@ -16,6 +16,7 @@ from telegram.ext import (
 )
 from datetime import time, datetime, timedelta
 import os
+import pytz
 
 # Enable logging
 logging.basicConfig(
@@ -23,7 +24,7 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
-group_id = os.getenv('GTOUP_ID', -4220216586)  # Replace with your group chat ID
+group_id = os.getenv('GTOUP_ID', -2163805514)  # Replace with your group chat ID
 topic_id = os.getenv('TOPIC_ID', 140)  # Replace with your group chat ID
 token = os.getenv('TOKEN', '7230447684:AAETM_yIJmnCCJQMjI7bZvZ3WNKosQQPnt4')
 
@@ -129,7 +130,7 @@ async def send_daily_report(context: CallbackContext) -> None:
 
 async def ask_for_daily_tasks(context: CallbackContext) -> None:
     """Send notification to group to send daily tasks."""
-    print
+
     await context.bot.send_message(group_id, message_thread_id=topic_id, text="Please submit your daily tasks using /report.")
 
 
@@ -190,11 +191,16 @@ def schedule_jobs(application: Application) -> None:
     """Schedule daily jobs."""
     job_queue: JobQueue = application.job_queue
 
+    # Specify the timezone
+    tz = pytz.timezone('Asia/Tehran')
+
     # Schedule daily tasks
-    job_queue.run_daily(send_daily_report, time=time(hour=9, minute=0))
-    job_queue.run_daily(ask_for_daily_tasks, time=time(hour=16, minute=0))
-    job_queue.run_daily(remind_users_to_send_tasks, time=time(hour=18, minute=0))
+    job_queue.run_daily(send_daily_report, time=time(hour=9, minute=0, tzinfo=tz), days=(0, 1, 2, 3, 5, 6))
+    job_queue.run_daily(ask_for_daily_tasks, time=time(hour=16, minute=0, tzinfo=tz), days=(0, 1, 2, 3, 5, 6))
+    job_queue.run_daily(remind_users_to_send_tasks, time=time(hour=18, minute=0, tzinfo=tz), days=(0, 1, 2, 3, 5, 6))
         
+    # job_queue.run_repeating(ask_for_daily_tasks, interval=7, first=0)
+    
 def main() -> None:
     """Start the bot."""
     # Create the Application and pass it your bot's token.
@@ -220,7 +226,6 @@ def main() -> None:
     # on different commands - answer in Telegram
     # application.add_handler(CommandHandler("start", start))
     # application.add_handler(CommandHandler("help", help_command))
-
     # Schedule the daily tasks
     schedule_jobs(application)
 
