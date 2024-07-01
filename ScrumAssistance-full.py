@@ -25,7 +25,8 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 group_id = os.getenv('GTOUP_ID', -1002163805514)  # Replace with your group chat ID
-topic_id = os.getenv('TOPIC_ID', 140)  # Replace with your group chat ID
+report_topic_id = os.getenv('REPORT_TOPIC_ID', 425)  # Replace with your group chat ID
+alert_topic_id = os.getenv('ALERT_TOPIC_ID', 140)  # Replace with your group chat ID
 token = os.getenv('TOKEN', '7230447684:AAETM_yIJmnCCJQMjI7bZvZ3WNKosQQPnt4')
 all_users_id = [358434970, 266204483, 103275847, 1090118968]
 
@@ -123,7 +124,7 @@ async def send_daily_report(context: CallbackContext) -> None:
 
     if reports:
         report_text = await get_daily_report_message(context, reports)
-        await context.bot.send_message(group_id, message_thread_id=topic_id, text=report_text, parse_mode=ParseMode.MARKDOWN)
+        await context.bot.send_message(group_id, message_thread_id=report_topic_id, text=report_text, parse_mode=ParseMode.MARKDOWN)
 
         # Delete all reports after sending
         session = Session()
@@ -134,7 +135,7 @@ async def send_daily_report(context: CallbackContext) -> None:
 async def ask_for_daily_tasks(context: CallbackContext) -> None:
     """Send notification to group to send daily tasks."""
 
-    await context.bot.send_message(chat_id=group_id, message_thread_id=topic_id, text="لطفا گزارش روزانه خود را با ارسال /report تکمیل کنید")
+    await context.bot.send_message(chat_id=group_id, message_thread_id=alert_topic_id, text="لطفا گزارش روزانه خود را با ارسال /report تکمیل کنید")
 
 
 async def remind_users_to_send_tasks(context: Application) -> None:
@@ -164,7 +165,7 @@ async def remind_users_to_send_tasks(context: Application) -> None:
             # Send the message to the specified group and topic
             await context.bot.send_message(
                 chat_id=group_id,
-                message_thread_id=topic_id,
+                message_thread_id=alert_topic_id,
                 text=reminder_text,
                 parse_mode=ParseMode.MARKDOWN
             )
