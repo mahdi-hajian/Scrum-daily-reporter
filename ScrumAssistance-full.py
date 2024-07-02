@@ -3,7 +3,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import logging
-from telegram import Update, User
+from telegram import Update, User, Bot
 from telegram.constants import ParseMode
 from telegram.ext import (
     Application,
@@ -28,7 +28,6 @@ group_id = os.getenv('GTOUP_ID')
 report_topic_id = os.getenv('REPORT_TOPIC_ID')
 alert_topic_id = os.getenv('ALERT_TOPIC_ID')
 token = os.getenv('TOKEN')
-all_users_id = list(map(int, os.getenv('ALL_USERS_ID').split(',')))
 
 # Ensure the /data directory exists
 os.makedirs('data', exist_ok=True)
@@ -94,7 +93,7 @@ async def tasks_tomorrow(update: Update, context: CallbackContext) -> int:
     session.commit()
     session.close()
 
-    await update.message.reply_text('تشکر بابت گزارش روزانه 🌹')
+    await update.message.reply_text('گزارش روزانه شما ثبت شد.')
     return ConversationHandler.END
 
 async def cancel(update: Update, context: CallbackContext) -> int:
@@ -137,21 +136,35 @@ async def ask_for_daily_tasks(context: CallbackContext) -> None:
 
     await context.bot.send_message(chat_id=group_id, message_thread_id=alert_topic_id, text="لطفا گزارش روزانه خود را با ارسال /report تکمیل کنید")
 
+async def get_group_members(bot: Bot, chat_id: int) -> []:
+    members = []
+    try:
+        # Get the list of administrators (including the bot itself)
+        administrators = await bot.get_chat_administrators(chat_id)
+        
+        for admin in administrators:
+            logger.info(admin.user.username)
+            members.append(admin.user)
+        
+    except TelegramError as e:
+        print(f'An error occurred: {e}')
+    return members
 
 async def remind_users_to_send_tasks(context: Application) -> None:
     """Send reminder to users who haven't sent their tasks."""
+    
     session = Session()
     incomplete_reports = session.query(Report.user_id).all()
     session.close()
 
-    if all_users_id:
+    all_users: [] = await get_group_members(context.bot, group_id)
+    if all_users:
         # Extract user IDs from the query results
         users_with_reports = {report.user_id for report in incomplete_reports}
         users_to_remind = []
 
         # Loop through all users in the group
-        for one_user in all_users_id:
-            user = await context.bot.get_chat(one_user)
+        for user in all_users:
             user_id = user.id
             # Check if user hasn't submitted a report
             if user_id not in users_with_reports:
@@ -160,8 +173,7 @@ async def remind_users_to_send_tasks(context: Application) -> None:
         if users_to_remind:
             # Create a message mentioning all users who need to submit their report
             mentions = [get_user_mention_by_user(user)+'\n' for user in users_to_remind]
-            reminder_text = "لطفا گزارش روزانه خود را با ارسال /report تکمیل کنید\n" + " ".join(mentions)
-
+            reminder_text = "لطفا گزارش روزانه خود را با ارسال /report تکمیل کنید\n" + "".join(mentions)
             # Send the message to the specified group and topic
             await context.bot.send_message(
                 chat_id=group_id,
