@@ -5,7 +5,7 @@ FROM python:3.9-slim
 WORKDIR /app
 
 # Set proxy environment variables (replace with your proxy details)
-# ENV http_proxy http://192.168.254.1:3128
+ENV http_proxy=${HTTP_PROXY}
 
 # Copy the requirements file into the container
 COPY requirements.txt .

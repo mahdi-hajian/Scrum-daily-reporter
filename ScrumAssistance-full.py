@@ -24,11 +24,11 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
-group_id = os.getenv('GTOUP_ID', -1002163805514)  # Replace with your group chat ID
-report_topic_id = os.getenv('REPORT_TOPIC_ID', 425)  # Replace with your group chat ID
-alert_topic_id = os.getenv('ALERT_TOPIC_ID', 140)  # Replace with your group chat ID
-token = os.getenv('TOKEN', '7230447684:AAETM_yIJmnCCJQMjI7bZvZ3WNKosQQPnt4')
-all_users_id = [358434970, 266204483, 103275847, 1090118968]
+group_id = os.getenv('GTOUP_ID')
+report_topic_id = os.getenv('REPORT_TOPIC_ID')
+alert_topic_id = os.getenv('ALERT_TOPIC_ID')
+token = os.getenv('TOKEN')
+all_users_id = list(map(int, os.getenv('ALL_USERS_ID').split(',')))
 
 # Ensure the /data directory exists
 os.makedirs('data', exist_ok=True)
@@ -216,8 +216,15 @@ def schedule_jobs(application: Application) -> None:
     
 def main() -> None:
     """Start the bot."""
+    
+    proxy_url = os.getenv('HTTP_PROXY')
+
+    # Create the application with or without the proxy based on its availability
     # Create the Application and pass it your bot's token.
-    application = Application.builder().token(token).build()
+    if proxy_url:
+        application = Application.builder().token(token).proxy(proxy_url).build()
+    else:
+        application = Application.builder().token(token).build()
 
     group_filter = filters.ChatType.GROUPS
     
