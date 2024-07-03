@@ -230,12 +230,11 @@ def main() -> None:
     """Start the bot."""
     
     proxy_url = os.getenv('HTTP_PROXY')
-    # request = HTTPXRequest(proxy_url="http://192.168.254.1:3128")
 
     # Create the application with or without the proxy based on its availability
     # Create the Application and pass it your bot's token.
     if proxy_url:
-        application = Application.builder().token(token).proxy_url(proxy_url).build()
+        application = Application.builder().token(token).proxy(proxy_url).get_updates_proxy(proxy_url).build()
     else:
         application = Application.builder().token(token).build()
 
