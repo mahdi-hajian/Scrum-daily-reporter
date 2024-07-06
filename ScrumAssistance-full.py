@@ -123,7 +123,7 @@ async def send_daily_report(context: CallbackContext) -> None:
 
     if reports:
         report_text = await get_daily_report_message(context, reports)
-        await context.bot.send_message(group_id, message_thread_id=report_topic_id, text=report_text, parse_mode=ParseMode.MARKDOWN)
+        await context.bot.send_message(chat_id=group_id, message_thread_id=report_topic_id, text=report_text, parse_mode=ParseMode.MARKDOWN)
 
         # Delete all reports after sending
         session = Session()
@@ -222,9 +222,9 @@ def schedule_jobs(application: Application) -> None:
     tz = pytz.timezone('Asia/Tehran')
 
     # Schedule daily tasks
-    job_queue.run_daily(ask_for_daily_tasks, time=time(hour=16, minute=0, tzinfo=tz), days=(0, 1, 2, 3, 5, 6))
-    job_queue.run_daily(remind_users_to_send_tasks, time=time(hour=18, minute=0, tzinfo=tz), days=(0, 1, 2, 3, 5, 6))
-    job_queue.run_daily(send_daily_report, time=time(hour=9, minute=0, tzinfo=tz), days=(0, 1, 2, 3, 5, 6))
+    job_queue.run_daily(ask_for_daily_tasks, time=time(hour=16, minute=0, tzinfo=tz))
+    job_queue.run_daily(remind_users_to_send_tasks, time=time(hour=18, minute=0, tzinfo=tz))
+    job_queue.run_daily(send_daily_report, time=time(hour=9, minute=0, tzinfo=tz))
     
 def main() -> None:
     """Start the bot."""
