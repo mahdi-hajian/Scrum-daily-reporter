@@ -198,14 +198,18 @@ async def send_daily_reports(update: Update, context: CallbackContext) -> None:
     # Notify the user that reports are being fetched
     await update.message.reply_text("در حال دریافت گزارشات ...")
 
+    logger.info("Sending daily reports")
+
     session = Session()
     reports = session.query(Report).all()
     session.close()
 
     if reports:
+        logger.info("Report exist")
         report_text = await get_daily_report_message(context, reports)
         await update.message.reply_text(report_text, parse_mode=ParseMode.MARKDOWN)
     else:
+        logger.info("Report not exist")
         await update.message.reply_text("هیچ گزارشی یافت نشد.")
     
     # Delete all reports after sending
@@ -234,8 +238,10 @@ def main() -> None:
     # Create the application with or without the proxy based on its availability
     # Create the Application and pass it your bot's token.
     if proxy_url:
+        logger.info("proxy")
         application = Application.builder().token(token).proxy(proxy_url).get_updates_proxy(proxy_url).build()
     else:
+        logger.info("no proxy")
         application = Application.builder().token(token).build()
 
     group_filter = filters.ChatType.GROUPS
