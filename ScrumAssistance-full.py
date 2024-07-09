@@ -3,7 +3,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import logging
-from telegram import Update, User
+from telegram import Update, User, Bot
 from telegram.constants import ParseMode
 from telegram.ext import (
     Application,
@@ -24,11 +24,10 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
-group_id = os.getenv('GTOUP_ID', -1002163805514)  # Replace with your group chat ID
-report_topic_id = os.getenv('REPORT_TOPIC_ID', 425)  # Replace with your group chat ID
-alert_topic_id = os.getenv('ALERT_TOPIC_ID', 140)  # Replace with your group chat ID
-token = os.getenv('TOKEN', '7230447684:AAETM_yIJmnCCJQMjI7bZvZ3WNKosQQPnt4')
-all_users_id = [358434970, 266204483, 103275847, 1090118968]
+group_id = os.getenv('GTOUP_ID')
+report_topic_id = os.getenv('REPORT_TOPIC_ID')
+alert_topic_id = os.getenv('ALERT_TOPIC_ID')
+token = os.getenv('TOKEN')
 
 # Ensure the /data directory exists
 os.makedirs('data', exist_ok=True)
@@ -94,7 +93,7 @@ async def tasks_tomorrow(update: Update, context: CallbackContext) -> int:
     session.commit()
     session.close()
 
-    await update.message.reply_text('تشکر بابت گزارش روزانه 🌹')
+    await update.message.reply_text('گزارش روزانه شما ثبت شد.')
     return ConversationHandler.END
 
 async def cancel(update: Update, context: CallbackContext) -> int:
@@ -124,7 +123,7 @@ async def send_daily_report(context: CallbackContext) -> None:
 
     if reports:
         report_text = await get_daily_report_message(context, reports)
-        await context.bot.send_message(group_id, message_thread_id=report_topic_id, text=report_text, parse_mode=ParseMode.MARKDOWN)
+        await context.bot.send_message(chat_id=group_id, message_thread_id=report_topic_id, text=report_text, parse_mode=ParseMode.MARKDOWN)
 
         # Delete all reports after sending
         session = Session()
@@ -137,21 +136,35 @@ async def ask_for_daily_tasks(context: CallbackContext) -> None:
 
     await context.bot.send_message(chat_id=group_id, message_thread_id=alert_topic_id, text="لطفا گزارش روزانه خود را با ارسال /report تکمیل کنید")
 
+async def get_group_members(bot: Bot, chat_id: int) -> []:
+    members = []
+    try:
+        # Get the list of administrators (including the bot itself)
+        administrators = await bot.get_chat_administrators(chat_id)
+        
+        for admin in administrators:
+            logger.info(admin.user.username)
+            members.append(admin.user)
+        
+    except TelegramError as e:
+        print(f'An error occurred: {e}')
+    return members
 
 async def remind_users_to_send_tasks(context: Application) -> None:
     """Send reminder to users who haven't sent their tasks."""
+    
     session = Session()
     incomplete_reports = session.query(Report.user_id).all()
     session.close()
 
-    if all_users_id:
+    all_users: [] = await get_group_members(context.bot, group_id)
+    if all_users:
         # Extract user IDs from the query results
         users_with_reports = {report.user_id for report in incomplete_reports}
         users_to_remind = []
 
         # Loop through all users in the group
-        for one_user in all_users_id:
-            user = await context.bot.get_chat(one_user)
+        for user in all_users:
             user_id = user.id
             # Check if user hasn't submitted a report
             if user_id not in users_with_reports:
@@ -160,8 +173,7 @@ async def remind_users_to_send_tasks(context: Application) -> None:
         if users_to_remind:
             # Create a message mentioning all users who need to submit their report
             mentions = [get_user_mention_by_user(user)+'\n' for user in users_to_remind]
-            reminder_text = "لطفا گزارش روزانه خود را با ارسال /report تکمیل کنید\n" + " ".join(mentions)
-
+            reminder_text = "لطفا گزارش روزانه خود را با ارسال /report تکمیل کنید\n" + "".join(mentions)
             # Send the message to the specified group and topic
             await context.bot.send_message(
                 chat_id=group_id,
@@ -186,14 +198,18 @@ async def send_daily_reports(update: Update, context: CallbackContext) -> None:
     # Notify the user that reports are being fetched
     await update.message.reply_text("در حال دریافت گزارشات ...")
 
+    logger.info("Sending daily reports")
+
     session = Session()
     reports = session.query(Report).all()
     session.close()
 
     if reports:
+        logger.info("Report exist")
         report_text = await get_daily_report_message(context, reports)
         await update.message.reply_text(report_text, parse_mode=ParseMode.MARKDOWN)
     else:
+        logger.info("Report not exist")
         await update.message.reply_text("هیچ گزارشی یافت نشد.")
     
     # Delete all reports after sending
@@ -210,14 +226,23 @@ def schedule_jobs(application: Application) -> None:
     tz = pytz.timezone('Asia/Tehran')
 
     # Schedule daily tasks
-    job_queue.run_daily(ask_for_daily_tasks, time=time(hour=16, minute=0, tzinfo=tz), days=(0, 1, 2, 3, 5, 6))
-    job_queue.run_daily(remind_users_to_send_tasks, time=time(hour=18, minute=0, tzinfo=tz), days=(0, 1, 2, 3, 5, 6))
-    job_queue.run_daily(send_daily_report, time=time(hour=9, minute=0, tzinfo=tz), days=(0, 1, 2, 3, 5, 6))
+    job_queue.run_daily(ask_for_daily_tasks, time=time(hour=16, minute=0, tzinfo=tz))
+    job_queue.run_daily(remind_users_to_send_tasks, time=time(hour=18, minute=0, tzinfo=tz))
+    job_queue.run_daily(send_daily_report, time=time(hour=9, minute=0, tzinfo=tz))
     
 def main() -> None:
     """Start the bot."""
+    
+    proxy_url = os.getenv('HTTP_PROXY')
+
+    # Create the application with or without the proxy based on its availability
     # Create the Application and pass it your bot's token.
-    application = Application.builder().token(token).build()
+    if proxy_url:
+        logger.info("proxy")
+        application = Application.builder().token(token).proxy(proxy_url).get_updates_proxy(proxy_url).build()
+    else:
+        logger.info("no proxy")
+        application = Application.builder().token(token).build()
 
     group_filter = filters.ChatType.GROUPS
     
