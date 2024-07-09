@@ -212,12 +212,6 @@ async def send_daily_reports(update: Update, context: CallbackContext) -> None:
         logger.info("Report not exist")
         await update.message.reply_text("هیچ گزارشی یافت نشد.")
     
-    # Delete all reports after sending
-    session = Session()
-    session.query(Report).delete()
-    session.commit()
-    session.close()
-
 def schedule_jobs(application: Application) -> None:
     """Schedule daily jobs."""
     job_queue: JobQueue = application.job_queue
