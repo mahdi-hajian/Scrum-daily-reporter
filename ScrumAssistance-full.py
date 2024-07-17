@@ -107,6 +107,8 @@ async def get_daily_report_message(context, reports) -> String:
     logger.info("2")
     for report in reports:
         logger.info("3")
+        logger.info(report.user_id)
+        logger.info(report.tasks_today)
         user_link = await get_user_mention_by_user_id(context, report.user_id)
         logger.info("4")
         logger.info(user_link)
