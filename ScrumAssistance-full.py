@@ -102,9 +102,14 @@ async def cancel(update: Update, context: CallbackContext) -> int:
     return ConversationHandler.END
 
 async def get_daily_report_message(context, reports) -> String:
+    logger.info("1")
     report_text = "گزارشات روزانه:\n\n"
+    logger.info("2")
     for report in reports:
+        logger.info("3")
         user_link = await get_user_mention_by_user_id(context, report.user_id)
+        logger.info("4")
+        logger.info(user_link)
         report_text += (
             f"گزارش {user_link}:\n"
             f"دیروز کار کرده روی:\n{report.tasks_today}\n"
@@ -112,6 +117,10 @@ async def get_daily_report_message(context, reports) -> String:
             f"امروز قراره کار کنه روی:\n{report.tasks_tomorrow}\n"
             f"- - - - - - - -\n"
         )
+        logger.info("5")
+        logger.info(report_text)
+    logger.info("6")
+    logger.info(report_text)
     return report_text
 
 
@@ -212,9 +221,13 @@ async def send_daily_reports_manually(update: Update, context: CallbackContext) 
     session.close()
 
     if reports:
+        logger.info("report exists")
         report_text = await get_daily_report_message(context, reports)
+        logger.info(report_text)
         await update.message.reply_text(report_text, parse_mode=ParseMode.MARKDOWN)
+        logger.info("finish")
     else:
+        logger.info("report not exists")
         await update.message.reply_text("هیچ گزارشی یافت نشد.")
     
 def schedule_jobs(application: Application) -> None:
