@@ -46,6 +46,8 @@ class Report(Base):
     tasks_today = Column(String)
     blockers = Column(String)
     tasks_tomorrow = Column(String)
+    username = Column(String)
+    first_name = Column(String)
     timestamp = Column(DateTime, default=datetime.utcnow)
 
 Base.metadata.create_all(engine)
@@ -82,13 +84,23 @@ async def tasks_tomorrow(update: Update, context: CallbackContext) -> int:
 
     # Save report to SQLite
     session = Session()
+    user_info = get_user_info(context=context, user_id=user_id)
     new_report = Report(
         user_id=user_id,
         tasks_today=context.user_data['tasks_today'],
         blockers=context.user_data['blockers'],
-        tasks_tomorrow=context.user_data['tasks_tomorrow']
+        tasks_tomorrow=context.user_data['tasks_tomorrow'],
+        username = user_info.username,
+        first_name = user_info.first_name
     )
-    session.query(Report).filter(Report.user_id == user_id).delete()
+    
+    now = datetime.utcnow()
+    start_of_today = datetime(now.year, now.month, now.day)
+    
+    session.query(Report).filter(
+        Report.user_id == user_id,
+        Report.timestamp >= start_of_toda
+    ).delete()
     session.add(new_report)
     session.commit()
     session.close()
@@ -102,16 +114,9 @@ async def cancel(update: Update, context: CallbackContext) -> int:
     return ConversationHandler.END
 
 async def get_daily_report_message(context, reports) -> String:
-    logger.info("1")
     report_text = "گزارشات روزانه:\n\n"
-    logger.info("2")
     for report in reports:
-        logger.info("3")
-        logger.info(report.user_id)
-        logger.info(report.tasks_today)
         user_link = await get_user_mention_by_user_id(context, report.user_id)
-        logger.info("4")
-        logger.info(user_link)
         report_text += (
             f"گزارش {user_link}:\n"
             f"دیروز کار کرده روی:\n{report.tasks_today}\n"
@@ -119,35 +124,22 @@ async def get_daily_report_message(context, reports) -> String:
             f"امروز قراره کار کنه روی:\n{report.tasks_tomorrow}\n"
             f"- - - - - - - -\n"
         )
-        logger.info("5")
-        logger.info(report_text)
-    logger.info("6")
-    logger.info(report_text)
     return report_text
 
 
 async def send_daily_report(context: CallbackContext) -> None:
     """Send daily report to the group."""
+
+    now = datetime.utcnow()
+    yesterday = now - timedelta(days=1)
+
     session = Session()
-    reports = session.query(Report).all()
+    reports = session.query(Report).filter(Report.timestamp >= yesterday).all()
     session.close()
 
     if reports:
-        logger.info("report exist")
         report_text = await get_daily_report_message(context, reports)
-        logger.info(report_text)
         await context.bot.send_message(chat_id=group_id, message_thread_id=report_topic_id, text=report_text, parse_mode=ParseMode.MARKDOWN)
-        logger.info("sent")
-
-        # Delete all reports after sending
-        session = Session()
-        session.query(Report).delete()
-        session.commit()
-        session.close()
-        logger.info("remove all")
-        
-    logger.info("report not exist")
-    
 
 async def ask_for_daily_tasks(context: CallbackContext) -> None:
     """Send notification to group to send daily tasks."""
@@ -161,7 +153,6 @@ async def get_group_members(bot: Bot, chat_id: int) -> []:
         administrators = await bot.get_chat_administrators(chat_id)
         
         for admin in administrators:
-            logger.info(admin.user.username)
             members.append(admin.user)
         
     except TelegramError as e:
@@ -171,8 +162,11 @@ async def get_group_members(bot: Bot, chat_id: int) -> []:
 async def remind_users_to_send_tasks(context: Application) -> None:
     """Send reminder to users who haven't sent their tasks."""
     
+    now = datetime.utcnow()
+    start_of_today = datetime(now.year, now.month, now.day)
+    
     session = Session()
-    incomplete_reports = session.query(Report.user_id).all()
+    incomplete_reports = session.query(Report.user_id).filter(Report.timestamp >= start_of_today).all()
     session.close()
 
     all_users: [] = await get_group_members(context.bot, group_id)
@@ -203,33 +197,35 @@ async def remind_users_to_send_tasks(context: Application) -> None:
 async def get_user_info(context, user_id) -> User:
     return await context.bot.get_chat(user_id)
 
-async def get_user_mention_by_user_id(context, user_id) -> User:
-    user = await get_user_info(context, user_id)
+def get_user_mention_by_user_id(context, user_id) -> User:
+    session = Session()
+    user = session.query(Report).filter(Report.user_id == user_id).first()
+    session.close()
     return get_user_mention_by_user(user)
 
-def get_user_mention_by_user(user: User) -> User:
-    mention = (f"[@{user.username}]" if False else f"[{user.first_name}]") + f'(tg://user?id={user.id})'
-    return mention
+def get_user_mention_by_user(user: Report) -> String:
+    if user:
+        mention = (f"[@{user.username}]" if False else f"[{user.first_name}]") + f'(tg://user?id={user.user_id})'
+        return mention
+    else:
+        return ''
 
 async def send_daily_reports_manually(update: Update, context: CallbackContext) -> None:
     """Command handler to manually fetch and send daily reports."""
     # Notify the user that reports are being fetched
     await update.message.reply_text("در حال دریافت گزارشات ...")
 
-    logger.info("Sending daily reports")
+    now = datetime.utcnow()
+    start_of_today = datetime(now.year, now.month, now.day)
 
     session = Session()
-    reports = session.query(Report).all()
+    reports = session.query(Report).filter(Report.timestamp >= start_of_today).all()
     session.close()
 
     if reports:
-        logger.info("report exists")
         report_text = await get_daily_report_message(context, reports)
-        logger.info(report_text)
         await update.message.reply_text(report_text, parse_mode=ParseMode.MARKDOWN)
-        logger.info("finish")
     else:
-        logger.info("report not exists")
         await update.message.reply_text("هیچ گزارشی یافت نشد.")
     
 def schedule_jobs(application: Application) -> None:
@@ -242,7 +238,7 @@ def schedule_jobs(application: Application) -> None:
     # Schedule daily tasks
     job_queue.run_daily(ask_for_daily_tasks, time=time(hour=16, minute=0, tzinfo=tz))
     job_queue.run_daily(remind_users_to_send_tasks, time=time(hour=18, minute=0, tzinfo=tz))
-    job_queue.run_daily(send_daily_report, time=time(hour=12, minute=5, tzinfo=tz))
+    job_queue.run_daily(send_daily_report, time=time(hour=9, minute=0, tzinfo=tz))
     
 def main() -> None:
     """Start the bot."""
@@ -252,10 +248,8 @@ def main() -> None:
     # Create the application with or without the proxy based on its availability
     # Create the Application and pass it your bot's token.
     if proxy_url:
-        logger.info("proxy")
         application = Application.builder().token(token).proxy(proxy_url).get_updates_proxy(proxy_url).build()
     else:
-        logger.info("no proxy")
         application = Application.builder().token(token).build()
 
     group_filter = filters.ChatType.GROUPS
