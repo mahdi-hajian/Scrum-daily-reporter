@@ -227,7 +227,7 @@ def schedule_jobs(application: Application) -> None:
     # Schedule daily tasks
     job_queue.run_daily(ask_for_daily_tasks, time=time(hour=16, minute=0, tzinfo=tz))
     job_queue.run_daily(remind_users_to_send_tasks, time=time(hour=18, minute=0, tzinfo=tz))
-    job_queue.run_daily(send_daily_report, time=time(hour=11, minute=25, tzinfo=tz))
+    job_queue.run_daily(send_daily_report, time=time(hour=11, minute=59, tzinfo=tz))
     
 def main() -> None:
     """Start the bot."""
