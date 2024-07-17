@@ -122,14 +122,21 @@ async def send_daily_report(context: CallbackContext) -> None:
     session.close()
 
     if reports:
+        logger.info("report exist")
         report_text = await get_daily_report_message(context, reports)
+        logger.info(report_text)
         await context.bot.send_message(chat_id=group_id, message_thread_id=report_topic_id, text=report_text, parse_mode=ParseMode.MARKDOWN)
+        logger.info("sent")
 
         # Delete all reports after sending
         session = Session()
         session.query(Report).delete()
         session.commit()
         session.close()
+        logger.info("remove all")
+        
+    logger.info("report not exist")
+    
 
 async def ask_for_daily_tasks(context: CallbackContext) -> None:
     """Send notification to group to send daily tasks."""
@@ -193,7 +200,7 @@ def get_user_mention_by_user(user: User) -> User:
     mention = (f"[@{user.username}]" if False else f"[{user.first_name}]") + f'(tg://user?id={user.id})'
     return mention
 
-async def send_daily_reports(update: Update, context: CallbackContext) -> None:
+async def send_daily_reports_manually(update: Update, context: CallbackContext) -> None:
     """Command handler to manually fetch and send daily reports."""
     # Notify the user that reports are being fetched
     await update.message.reply_text("در حال دریافت گزارشات ...")
@@ -205,11 +212,9 @@ async def send_daily_reports(update: Update, context: CallbackContext) -> None:
     session.close()
 
     if reports:
-        logger.info("Report exist")
         report_text = await get_daily_report_message(context, reports)
         await update.message.reply_text(report_text, parse_mode=ParseMode.MARKDOWN)
     else:
-        logger.info("Report not exist")
         await update.message.reply_text("هیچ گزارشی یافت نشد.")
     
 def schedule_jobs(application: Application) -> None:
@@ -222,7 +227,7 @@ def schedule_jobs(application: Application) -> None:
     # Schedule daily tasks
     job_queue.run_daily(ask_for_daily_tasks, time=time(hour=16, minute=0, tzinfo=tz))
     job_queue.run_daily(remind_users_to_send_tasks, time=time(hour=18, minute=0, tzinfo=tz))
-    job_queue.run_daily(send_daily_report, time=time(hour=9, minute=0, tzinfo=tz))
+    job_queue.run_daily(send_daily_report, time=time(hour=11, minute=25, tzinfo=tz))
     
 def main() -> None:
     """Start the bot."""
@@ -251,7 +256,7 @@ def main() -> None:
         fallbacks=[CommandHandler('cancel', cancel)],
     )
     
-    application.add_handler(CommandHandler("getreports", send_daily_reports, filters=group_filter))
+    application.add_handler(CommandHandler("getreports", send_daily_reports_manually, filters=group_filter))
 
     application.add_handler(conv_handler)
     
