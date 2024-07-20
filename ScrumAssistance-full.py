@@ -46,8 +46,6 @@ class Report(Base):
     tasks_today = Column(String)
     blockers = Column(String)
     tasks_tomorrow = Column(String)
-    username = Column(String)
-    first_name = Column(String)
     timestamp = Column(DateTime, default=datetime.utcnow)
 
 Base.metadata.create_all(engine)
@@ -84,14 +82,11 @@ async def tasks_tomorrow(update: Update, context: CallbackContext) -> int:
 
     # Save report to SQLite
     session = Session()
-    user_info = get_user_info(context=context, user_id=user_id)
     new_report = Report(
         user_id=user_id,
         tasks_today=context.user_data['tasks_today'],
         blockers=context.user_data['blockers'],
-        tasks_tomorrow=context.user_data['tasks_tomorrow'],
-        username = user_info.username,
-        first_name = user_info.first_name
+        tasks_tomorrow=context.user_data['tasks_tomorrow']
     )
     
     now = datetime.utcnow()
@@ -99,7 +94,7 @@ async def tasks_tomorrow(update: Update, context: CallbackContext) -> int:
     
     session.query(Report).filter(
         Report.user_id == user_id,
-        Report.timestamp >= start_of_toda
+        Report.timestamp >= start_of_today
     ).delete()
     session.add(new_report)
     session.commit()
@@ -195,20 +190,21 @@ async def remind_users_to_send_tasks(context: Application) -> None:
             )
 
 async def get_user_info(context, user_id) -> User:
-    return await context.bot.get_chat(user_id)
+    try:
+        return await context.bot.get_chat(user_id)
+    except:
+        return {
+            "first_name": "نام نامشخص",
+            "username": "نام نامشخص"
+        }
 
-def get_user_mention_by_user_id(context, user_id) -> User:
-    session = Session()
-    user = session.query(Report).filter(Report.user_id == user_id).first()
-    session.close()
+async def get_user_mention_by_user_id(context, user_id) -> User:
+    user = await get_user_info(context, user_id)
     return get_user_mention_by_user(user)
 
-def get_user_mention_by_user(user: Report) -> String:
-    if user:
-        mention = (f"[@{user.username}]" if False else f"[{user.first_name}]") + f'(tg://user?id={user.user_id})'
-        return mention
-    else:
-        return ''
+def get_user_mention_by_user(user: User) -> String:
+    mention = (f"[@{user.username}]" if user.username else f"[{user.first_name}]") + f'(tg://user?id={user.id})'
+    return mention
 
 async def send_daily_reports_manually(update: Update, context: CallbackContext) -> None:
     """Command handler to manually fetch and send daily reports."""
