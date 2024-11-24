@@ -1,10 +1,9 @@
-Here’s the updated Markdown documentation, including the Dockerfile and Docker Compose configuration:
-
----
 
 # Daily Report Bot
 
 A Telegram bot designed to help teams submit and manage daily reports. The bot uses SQLite for storage and supports Docker for containerized deployment.
+
+**[View this document in Persian (نسخه فارسی)](README_FA.md)**
 
 ---
 
@@ -140,10 +139,6 @@ volumes:
    docker-compose down
    ```
 
-### Persistent Data
-
-- Reports are stored in the `data` directory. When using Docker Compose, this directory is mapped to a volume for persistence.
-
 ---
 
 ## Scheduled Jobs
@@ -190,4 +185,11 @@ The bot uses SQLite with the following schema:
 
 ---
 
-With Docker integration, this bot is easy to deploy and manage, ensuring smooth operations for teams needing daily reports.
+---
+
+### Persian Version (نسخه فارسی)
+
+**[View this document in English](README_FA.md)**
+
+---
+
